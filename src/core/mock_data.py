@@ -2,13 +2,14 @@
 
 from pathlib import Path
 import json
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 
 def create_widget_attributes(
     widget_id: str,
     template_type: str,
     title: str,
+    position: Dict[str, int],
     size: Dict[str, int],
     visible: bool = True
 ) -> Dict[str, Any]:
