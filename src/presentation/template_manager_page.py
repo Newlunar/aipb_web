@@ -7,12 +7,15 @@ from src.core.widget_engine import WidgetEngine
 from src.core.mock_data import (
     create_widget_attributes,
     save_widget_attributes,
-    save_widget_content,
     load_page_layout,
     save_page_layout,
     add_widget_to_layout,
     remove_widget_from_layout
 )
+from src.templates.action_list import ActionListTemplate
+from src.templates.bar_chart import BarChartTemplate
+from src.templates.feed import FeedTemplate
+from src.templates.calendar import CalendarTemplate
 
 
 def render_template_manager_page():
@@ -28,11 +31,17 @@ def render_template_manager_page():
     
     engine = WidgetEngine(attributes_dir, content_dir)
     
+    # Register templates for preview
+    engine.register_template("action_list", ActionListTemplate)
+    engine.register_template("bar_chart", BarChartTemplate)
+    engine.register_template("feed", FeedTemplate)
+    engine.register_template("calendar", CalendarTemplate)
+    
     # Tabs for different management areas
     tab1, tab2, tab3 = st.tabs(["위젯 생성/수정", "위젯 목록", "페이지 레이아웃"])
     
     with tab1:
-        render_widget_form(attributes_dir, content_dir)
+        render_widget_form(engine, attributes_dir)
     
     with tab2:
         render_widget_list(engine, attributes_dir, content_dir, pages_dir)
@@ -41,144 +50,84 @@ def render_template_manager_page():
         render_page_layout_manager(engine, pages_dir)
 
 
-def render_widget_form(attributes_dir: Path, content_dir: Path):
-    """Render widget creation/edit form."""
-    st.subheader("위젯 생성/수정")
+def render_widget_form(engine: WidgetEngine, attributes_dir: Path):
+    """Render widget creation/edit form with sample preview."""
     
-    # Template type selection
-    template_type = st.selectbox(
-        "템플릿 타입",
-        ["action_list", "bar_chart", "feed", "calendar"]
-    )
+    # Two-column layout: form (narrow) | sample preview (wide)
+    form_col, preview_col = st.columns([1, 2])
     
-    # Widget attributes form (position removed)
-    st.markdown("### 위젯 속성")
-    widget_id = st.text_input("위젯 ID", placeholder="예: action_list_001")
-    title = st.text_input("제목", placeholder="예: 만기 고객 목록")
+    with form_col:
+        st.subheader("위젯 생성/수정")
+        
+        # Template type selection
+        template_type = st.selectbox(
+            "템플릿 타입",
+            ["action_list", "bar_chart", "feed", "calendar"]
+        )
+        
+        # Widget attributes form
+        widget_id = st.text_input("위젯 ID", placeholder="예: action_list_001")
+        title = st.text_input("제목", placeholder="예: 만기 고객 목록")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            width = st.number_input("너비 (1-4)", min_value=1, max_value=4, value=2)
+        with col2:
+            height = st.number_input("높이", min_value=1, value=1)
+        
+        visible = st.checkbox("표시", value=True)
+        
+        # Save button
+        if st.button("저장", type="primary"):
+            if not widget_id:
+                st.error("위젯 ID를 입력하세요.")
+            elif not title:
+                st.error("제목을 입력하세요.")
+            else:
+                # Create and save attributes
+                attributes = create_widget_attributes(
+                    widget_id=widget_id,
+                    template_type=template_type,
+                    title=title,
+                    size={"width": width, "height": height},
+                    visible=visible
+                )
+                
+                attributes_path = attributes_dir / f"{widget_id}.json"
+                save_widget_attributes(attributes, attributes_path)
+                
+                st.success(f"위젯 '{widget_id}'이(가) 저장되었습니다!")
+                st.info("💡 페이지 레이아웃 탭에서 위젯의 위치를 설정하세요.")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        width = st.number_input("너비", min_value=1, value=2)
-    with col2:
-        height = st.number_input("높이", min_value=1, value=2)
+    with preview_col:
+        st.subheader("위젯 샘플 미리보기")
+        
+        # Show sample widget based on selected template type
+        render_sample_widget(engine, template_type)
+
+
+def render_sample_widget(engine: WidgetEngine, template_type: str):
+    """Render a sample widget preview based on template type."""
     
-    visible = st.checkbox("표시", value=True)
+    # Sample widget IDs for each template type
+    sample_widgets = {
+        "action_list": "action_list_001",
+        "bar_chart": "bar_chart_001",
+        "feed": "feed_001",
+        "calendar": "calendar_001"
+    }
     
-    # Content form based on template type
-    st.markdown("### 컨텐츠 데이터")
-    content_data = render_content_form(template_type)
+    sample_id = sample_widgets.get(template_type)
     
-    # Save button
-    if st.button("저장", type="primary"):
-        if not widget_id:
-            st.error("위젯 ID를 입력하세요.")
-        elif not title:
-            st.error("제목을 입력하세요.")
+    if sample_id:
+        widget = engine.create_widget(sample_id)
+        if widget:
+            with st.container(border=True):
+                widget.render()
         else:
-            # Create and save attributes (without position)
-            attributes = create_widget_attributes(
-                widget_id=widget_id,
-                template_type=template_type,
-                title=title,
-                size={"width": width, "height": height},
-                visible=visible
-            )
-            
-            attributes_path = attributes_dir / f"{widget_id}.json"
-            save_widget_attributes(attributes, attributes_path)
-            
-            # Create and save content
-            content = {
-                "widget_id": widget_id,
-                "content": content_data
-            }
-            content_path = content_dir / f"{widget_id}.json"
-            save_widget_content(content, content_path)
-            
-            st.success(f"위젯 '{widget_id}'이(가) 저장되었습니다!")
-            st.info("💡 페이지 레이아웃 탭에서 위젯의 위치를 설정하세요.")
-
-
-def render_content_form(template_type: str) -> dict:
-    """Render content form based on template type."""
-    if template_type == "action_list":
-        return render_action_list_content_form()
-    elif template_type == "bar_chart":
-        return render_bar_chart_content_form()
-    elif template_type == "feed":
-        return render_feed_content_form()
-    elif template_type == "calendar":
-        return render_calendar_content_form()
+            st.info(f"'{template_type}' 타입의 샘플 위젯이 없습니다.")
     else:
-        return {}
-
-
-def render_action_list_content_form() -> dict:
-    """Render action list content form."""
-    st.info("액션 리스트 컨텐츠 입력 (간단 버전)")
-    
-    content_json = st.text_area(
-        "컨텐츠 JSON",
-        value='{\n  "items": [],\n  "filters": []\n}',
-        height=200
-    )
-    
-    try:
-        return json.loads(content_json)
-    except json.JSONDecodeError:
-        st.error("유효하지 않은 JSON입니다.")
-        return {"items": [], "filters": []}
-
-
-def render_bar_chart_content_form() -> dict:
-    """Render bar chart content form."""
-    st.info("바 차트 컨텐츠 입력 (간단 버전)")
-    
-    content_json = st.text_area(
-        "컨텐츠 JSON",
-        value='{\n  "categories": [],\n  "values": [],\n  "x_label": "",\n  "y_label": ""\n}',
-        height=200
-    )
-    
-    try:
-        return json.loads(content_json)
-    except json.JSONDecodeError:
-        st.error("유효하지 않은 JSON입니다.")
-        return {"categories": [], "values": []}
-
-
-def render_feed_content_form() -> dict:
-    """Render feed content form."""
-    st.info("피드형 컨텐츠 입력 (간단 버전)")
-    
-    content_json = st.text_area(
-        "컨텐츠 JSON",
-        value='{\n  "items": []\n}',
-        height=200
-    )
-    
-    try:
-        return json.loads(content_json)
-    except json.JSONDecodeError:
-        st.error("유효하지 않은 JSON입니다.")
-        return {"items": []}
-
-
-def render_calendar_content_form() -> dict:
-    """Render calendar content form."""
-    st.info("캘린더 컨텐츠 입력 (간단 버전)")
-    
-    content_json = st.text_area(
-        "컨텐츠 JSON",
-        value='{\n  "events": []\n}',
-        height=200
-    )
-    
-    try:
-        return json.loads(content_json)
-    except json.JSONDecodeError:
-        st.error("유효하지 않은 JSON입니다.")
-        return {"events": []}
+        st.info("샘플 위젯을 불러올 수 없습니다.")
 
 
 def render_widget_list(engine: WidgetEngine, attributes_dir: Path, content_dir: Path, pages_dir: Path):
