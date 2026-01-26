@@ -1,0 +1,10 @@
+{
+  "widget_id": "bar_chart_001",
+  "template_type": "bar_chart",
+  "title": "날짜별 만기 건수",
+  "size": {
+    "width": 2,
+    "height": 1
+  },
+  "visible": true
+}
