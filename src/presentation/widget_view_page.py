@@ -78,38 +78,72 @@ def render_widget_view_page():
     
     st.info(f"페이지: {layout.get('title', current_page)} | 총 {len(layout_widget_ids)}개 위젯")
     
-    # Load all widgets and sort by position from layout
+    # Load all widgets with position and size info
     widgets_with_pos = []
     for widget_id in layout_widget_ids:
         widget = engine.create_widget(widget_id)
         if widget and widget.attributes:
             pos = position_map.get(widget_id, {'row': 0, 'col': 0})
-            widgets_with_pos.append((pos['row'], pos['col'], widget))
+            size = widget.attributes.get('size', {'width': 2, 'height': 1})
+            widgets_with_pos.append({
+                'row': pos['row'],
+                'col': pos['col'],
+                'width': size.get('width', 2),
+                'widget': widget
+            })
     
     # Sort by row, then by col
-    widgets_with_pos.sort(key=lambda x: (x[0], x[1]))
+    widgets_with_pos.sort(key=lambda x: (x['row'], x['col']))
     
-    # Display widgets
-    current_row = -1
-    cols = None
+    # Group widgets by row
+    rows = {}
+    for item in widgets_with_pos:
+        row_num = item['row']
+        if row_num not in rows:
+            rows[row_num] = []
+        rows[row_num].append(item)
     
-    for row, col, widget in widgets_with_pos:
-        # Start new row if needed
-        if row != current_row:
-            if cols:
-                pass
-            current_row = row
-            cols = None
+    # Total grid columns (4-column system)
+    TOTAL_COLS = 4
+    
+    # Render each row with automatic wrapping
+    for row_num in sorted(rows.keys()):
+        row_widgets = rows[row_num]
         
-        # Get widget size
-        size = widget.attributes.get('size', {'width': 2, 'height': 1})
-        width = size.get('width', 2)
+        # Split widgets into visual rows if they exceed TOTAL_COLS
+        visual_rows = []
+        current_visual_row = []
+        current_width = 0
         
-        # Create columns if needed
-        if not cols:
-            cols = st.columns(1)
+        for item in row_widgets:
+            widget_width = item['width']
+            
+            # If this widget would exceed the row, start a new visual row
+            if current_width + widget_width > TOTAL_COLS and current_visual_row:
+                visual_rows.append(current_visual_row)
+                current_visual_row = []
+                current_width = 0
+            
+            current_visual_row.append(item)
+            current_width += widget_width
         
-        # Render widget
-        with cols[0]:
-            widget.render()
-            st.divider()
+        # Add the last visual row
+        if current_visual_row:
+            visual_rows.append(current_visual_row)
+        
+        # Render each visual row
+        for visual_row in visual_rows:
+            col_widths = [item['width'] for item in visual_row]
+            
+            # If total width < TOTAL_COLS, add empty space
+            total_width = sum(col_widths)
+            if total_width < TOTAL_COLS:
+                col_widths.append(TOTAL_COLS - total_width)
+            
+            # Create columns with proportional widths
+            cols = st.columns(col_widths)
+            
+            # Render widgets in their columns
+            for idx, item in enumerate(visual_row):
+                with cols[idx]:
+                    item['widget'].render()
