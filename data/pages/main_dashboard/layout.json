@@ -1,0 +1,35 @@
+{
+  "page_id": "main_dashboard",
+  "title": "메인 대시보드",
+  "description": "AI 자산관리비서 메인 대시보드",
+  "widgets": [
+    {
+      "widget_id": "action_list_001",
+      "position": {
+        "row": 0,
+        "col": 0
+      }
+    },
+    {
+      "widget_id": "bar_chart_001",
+      "position": {
+        "row": 0,
+        "col": 2
+      }
+    },
+    {
+      "widget_id": "feed_001",
+      "position": {
+        "row": 1,
+        "col": 0
+      }
+    },
+    {
+      "widget_id": "calendar_001",
+      "position": {
+        "row": 1,
+        "col": 2
+      }
+    }
+  ]
+}

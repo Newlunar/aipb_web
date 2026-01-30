@@ -51,9 +51,9 @@ def render_template_manager_page():
 
 
 def render_widget_form(engine: WidgetEngine, attributes_dir: Path):
-    """Render widget creation/edit form with sample preview."""
+    """Render widget creation/edit form with live preview."""
     
-    # Two-column layout: form (narrow) | sample preview (wide)
+    # Two-column layout: form (narrow) | live preview (wide)
     form_col, preview_col = st.columns([1, 2])
     
     with form_col:
@@ -67,7 +67,7 @@ def render_widget_form(engine: WidgetEngine, attributes_dir: Path):
         
         # Widget attributes form
         widget_id = st.text_input("위젯 ID", placeholder="예: action_list_001")
-        title = st.text_input("제목", placeholder="예: 만기 고객 목록")
+        title = st.text_input("제목", placeholder="예: 제목을 입력하시오")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -100,34 +100,68 @@ def render_widget_form(engine: WidgetEngine, attributes_dir: Path):
                 st.info("💡 페이지 레이아웃 탭에서 위젯의 위치를 설정하세요.")
     
     with preview_col:
-        st.subheader("위젯 샘플 미리보기")
+        st.subheader("실시간 미리보기")
         
-        # Show sample widget based on selected template type
-        render_sample_widget(engine, template_type)
+        # Show live preview with user input title
+        render_live_preview(engine, template_type, title)
 
 
-def render_sample_widget(engine: WidgetEngine, template_type: str):
-    """Render a sample widget preview based on template type."""
+def render_live_preview(engine: WidgetEngine, template_type: str, title: str):
+    """Render a live preview widget with user input title."""
     
-    # Sample widget IDs for each template type
-    sample_widgets = {
-        "action_list": "action_list_001",
-        "bar_chart": "bar_chart_001",
-        "feed": "feed_001",
-        "calendar": "calendar_001"
+    # Template class mapping
+    template_classes = {
+        "action_list": ActionListTemplate,
+        "bar_chart": BarChartTemplate,
+        "feed": FeedTemplate,
+        "calendar": CalendarTemplate
     }
     
-    sample_id = sample_widgets.get(template_type)
+    template_class = template_classes.get(template_type)
     
-    if sample_id:
-        widget = engine.create_widget(sample_id)
-        if widget:
-            with st.container(border=True):
-                widget.render()
+    if not template_class:
+        st.info("지원하지 않는 템플릿 타입입니다.")
+        return
+    
+    # Create template instance with preview ID
+    preview_widget = template_class("preview_widget")
+    
+    # Set attributes directly with user input title
+    display_title = title if title else "(제목을 입력하세요)"
+    preview_widget.attributes = {
+        "widget_id": "preview_widget",
+        "template_type": template_type,
+        "title": display_title,
+        "size": {"width": 2, "height": 1},
+        "visible": True
+    }
+    
+    # Load sample content from content directory
+    base_path = Path(__file__).parent.parent.parent
+    content_dir = base_path / "data" / "widgets" / "content"
+    
+    # Sample content file mapping
+    sample_content_files = {
+        "action_list": "action_list_001.json",
+        "bar_chart": "bar_chart_001.json",
+        "feed": "feed_001.json",
+        "calendar": "calendar_001.json"
+    }
+    
+    content_file = sample_content_files.get(template_type)
+    content_path = content_dir / content_file if content_file else None
+    
+    with st.container(border=True):
+        if content_path and content_path.exists():
+            try:
+                preview_widget.load_content(content_path)
+                preview_widget.render()
+            except Exception as e:
+                st.error(f"미리보기 로드 실패: {e}")
         else:
-            st.info(f"'{template_type}' 타입의 샘플 위젯이 없습니다.")
-    else:
-        st.info("샘플 위젯을 불러올 수 없습니다.")
+            # Show placeholder if no sample content
+            st.subheader(display_title)
+            st.info(f"'{template_type}' 타입의 샘플 콘텐츠가 없습니다. 위젯을 저장한 후 콘텐츠를 추가하세요.")
 
 
 def render_widget_list(engine: WidgetEngine, attributes_dir: Path, content_dir: Path, pages_dir: Path):

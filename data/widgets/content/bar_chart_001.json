@@ -1,0 +1,11 @@
+{
+  "widget_id": "bar_chart_001",
+  "content": {
+    "categories": ["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"],
+    "values": [5, 8, 3, 12, 7],
+    "colors": ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"],
+    "x_label": "날짜",
+    "y_label": "건수",
+    "click_action": "show_action_list"
+  }
+}

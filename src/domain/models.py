@@ -1,14 +1,34 @@
 """Domain models for widget content data using dataclasses."""
 
 from dataclasses import dataclass
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from datetime import datetime, date
 
 
-# Action List Models
+# Customer Models
+@dataclass
+class CustomerProfile:
+    """고객 속성 정보 - 기본 고객 프로필 데이터."""
+    customer_id: str
+    customer_name: str
+    account_number: str
+    customer_grade: str  # 예: VIP, Gold, Silver, Bronze
+    call_yn: bool  # 전화 상담 가능 여부
+
+
+@dataclass
+class CustomerEvent:
+    """고객 이벤트 정보 - 중복 업데이트가 가능한 시나리오 기반 데이터."""
+    customer_id: str  # CustomerProfile과 연결하기 위한 키
+    scenario_id: str
+    scenario_name: str
+    scenario_data: Dict[str, Union[float, str]]  # 기본 키: quantity, amount, date (ISO format: YYYY-MM-DD)
+
+
+# Action List Models (레거시 호환용)
 @dataclass
 class ActionListItem:
-    """Individual item in an action list."""
+    """Individual item in an action list (레거시 호환용)."""
     customer_name: str
     account_number: str
     amount: float
@@ -21,6 +41,9 @@ class ActionListContent:
     """Content data for action list widget."""
     items: List[ActionListItem]
     filters: List[str]
+    # 새로운 구조 지원
+    customers: Optional[List[CustomerProfile]] = None
+    events: Optional[List[CustomerEvent]] = None
 
 
 # Bar Chart Models
