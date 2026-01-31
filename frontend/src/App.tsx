@@ -1,11 +1,11 @@
 import { Layout } from './components/layout'
-import { Dashboard } from './pages/Dashboard'
+import { FilterProvider } from './contexts/FilterContext'
 
 function App() {
   return (
-    <Layout>
-      <Dashboard />
-    </Layout>
+    <FilterProvider>
+      <Layout />
+    </FilterProvider>
   )
 }
 
