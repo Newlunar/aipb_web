@@ -30,7 +30,7 @@ function getMaxValue(items: BarChartDataItem[], stacked: boolean): number {
 function HorizontalBarStacked({
   data,
   seriesLabels,
-  maxVal
+  maxVal: _maxVal
 }: {
   data: BarChartDataItem[]
   seriesLabels: string[]
@@ -40,7 +40,6 @@ function HorizontalBarStacked({
     <div className="space-y-3 flex-1 min-h-0 flex flex-col">
       {data.map((item, i) => {
         const total = item.values.reduce((a, b) => a + b, 0)
-        const widthPct = maxVal > 0 ? (total / maxVal) * 100 : 0
         return (
           <div key={i} className="flex items-center gap-3 min-w-0">
             <span className="text-sm text-gray-600 w-20 flex-shrink-0 truncate" title={item.label}>

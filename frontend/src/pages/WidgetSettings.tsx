@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, LayoutGrid, Trash2, Edit, Calendar, Users, AlertTriangle, X, Save, Eye, BarChart3 } from 'lucide-react'
+import { Plus, LayoutGrid, Trash2, Edit, Users, AlertTriangle, X, Save, Eye, BarChart3 } from 'lucide-react'
 import {
   widgetTemplates,
   loadSavedWidgets,
@@ -18,7 +18,7 @@ import {
   type BarChartWidgetConfig,
   type BarChartVariant
 } from '../types/widget'
-import { getDataSourcesForTemplate, getDataSource, type DataSourceSpec } from '../types/datasource'
+import { getDataSourcesForTemplate, getDataSource } from '../types/datasource'
 import {
   mockBarChartMonthlyAum,
   mockBarChartMonthlyAumSeries,
@@ -358,12 +358,6 @@ function WidgetListTab({
       }
       onRefresh()
     }
-  }
-
-  // 데이터소스 이름 매핑
-  const getDataSourceName = (dataSourceId: string): string => {
-    const spec = getDataSource(dataSourceId)
-    return spec?.name || dataSourceId
   }
 
   if (widgets.length === 0) {
@@ -1080,21 +1074,21 @@ function WidgetEditTab({
                   </thead>
                   <tbody>
                     <tr className="border-b border-gray-100">
-                      {columns.map((col, idx) => (
+                      {columns.map((_col, idx) => (
                         <td key={idx} className="px-4 py-3 text-gray-400 italic text-xs">
                           샘플 데이터
                         </td>
                       ))}
                     </tr>
                     <tr className="border-b border-gray-100">
-                      {columns.map((col, idx) => (
+                      {columns.map((_col, idx) => (
                         <td key={idx} className="px-4 py-3 text-gray-400 italic text-xs">
                           샘플 데이터
                         </td>
                       ))}
                     </tr>
                     <tr className="border-b border-gray-100">
-                      {columns.map((col, idx) => (
+                      {columns.map((_col, idx) => (
                         <td key={idx} className="px-4 py-3 text-gray-400 italic text-xs">
                           샘플 데이터
                         </td>
@@ -2409,14 +2403,14 @@ function WidgetCreateTab({ onWidgetCreated }: { onWidgetCreated: () => void }) {
                         </thead>
                         <tbody>
                           <tr className="border-b border-gray-100">
-                            {columns.map((col, idx) => (
+                            {columns.map((_col, idx) => (
                               <td key={idx} className="px-3 py-2 text-gray-400">
                                 샘플 데이터
                               </td>
                             ))}
                           </tr>
                           <tr className="border-b border-gray-100">
-                            {columns.map((col, idx) => (
+                            {columns.map((_col, idx) => (
                               <td key={idx} className="px-3 py-2 text-gray-400">
                                 샘플 데이터
                               </td>

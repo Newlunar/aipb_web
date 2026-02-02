@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
@@ -12,7 +13,7 @@ interface UserContextType {
   setCurrentUserById: (userId: string) => void
   isLoading: boolean
   error: Error | null
-  refetchUsers: () => Promise<void>
+  refetchUsers: () => Promise<UserRow[] | undefined>
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
@@ -23,7 +24,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
-  const refetchUsers = useCallback(async () => {
+  const refetchUsers = useCallback(async (): Promise<UserRow[] | undefined> => {
     setError(null)
     try {
       const { data, error: fetchError } = await supabase
@@ -39,6 +40,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       console.error('Failed to fetch users:', err)
       setError(err instanceof Error ? err : new Error('Unknown error'))
       setUsers([])
+      return undefined
     }
   }, [])
 
@@ -70,7 +72,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [refetchUsers])
 
   const setCurrentUserById = useCallback((userId: string) => {
-    setCurrentUser((prev) => {
+    setCurrentUser((_prev) => {
       const next = users.find((u) => u.id === userId) ?? null
       if (next) {
         localStorage.setItem(STORAGE_KEY, userId)
