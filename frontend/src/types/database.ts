@@ -104,6 +104,18 @@ export interface Database {
           updated_at: string
         }
       }
+      summary_card_settings: {
+        Row: {
+          id: string
+          wm_id: string
+          card_type: string
+          value: string
+          value_type: 'number' | 'currency' | 'default'
+          description: string | null
+          created_at: string
+          updated_at: string
+        }
+      }
     }
   }
 }

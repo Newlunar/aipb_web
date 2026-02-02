@@ -1,4 +1,6 @@
 import type { ActionListData, ActionListTemplateConfig, ActionListDataSourceConfig } from '../components/widgets/ActionList'
+import type { BarChartDataItem } from '../types/widget'
+import { getDataSource } from '../types/datasource'
 
 // 기본 템플릿 설정
 export const defaultTemplateConfig: ActionListTemplateConfig = {
@@ -33,98 +35,16 @@ export const defaultTemplateConfig: ActionListTemplateConfig = {
   }
 }
 
-// 만기 고객 데이터소스 설정
-export const maturityDataSourceConfig: ActionListDataSourceConfig = {
-  query: {
-    base_table: 'customer_scenario_events',
-    scenario_filter: { codes: ['DEPOSIT_MATURITY', 'FUND_MATURITY', 'ELS_MATURITY', 'BOND_MATURITY'] },
-    status_filter: ['pending']
-  },
-  columns: [
-    { key: 'customer_name', label: '고객명', source: 'customer', field: 'name', width: '120px', clickable: true },
-    { key: 'grade', label: '등급', source: 'customer', field: 'grade', width: '80px', format: { type: 'badge' } },
-    { key: 'scenario', label: '시나리오', source: 'scenario', field: 'name', width: '120px' },
-    { key: 'event_date', label: '만기일', source: 'event', field: 'event_date', width: '100px', format: { type: 'date' }, sortable: true },
-    { key: 'principal', label: '원금', source: 'event', field: 'event_data.principal', width: '120px', align: 'right', format: { type: 'currency' }, sortable: true }
-  ],
-  filters: [
-    { 
-      key: 'customer_group', 
-      label: '고객 그룹', 
-      type: 'select', 
-      options: [
-        { value: 'all', label: '전체' }, 
-        { value: 'vip', label: '주요고객' },
-        { value: 'general', label: '일반' }
-      ],
-      default_value: 'all',
-      target: { source: 'customer', field: 'customer_group' }
-    }
-  ],
-  default_sort: { field: 'event_date', direction: 'asc' },
-  default_page_size: 10,
-  row_actions: [
-    { key: 'call', label: '전화', icon: 'phone', type: 'call', variant: 'primary' },
-    { key: 'detail', label: '상세', icon: 'info', type: 'popup', variant: 'ghost' }
-  ]
-}
+// 데이터소스 설정은 이제 types/datasource.ts의 DATA_SOURCE_REGISTRY에서 관리됩니다
+// 레거시 호환성을 위해 여기서 re-export
+export const maturityDataSourceConfig: ActionListDataSourceConfig =
+  getDataSource('maturity')?.config || {} as ActionListDataSourceConfig
 
-// 미접촉 고객 데이터소스 설정
-export const noContactDataSourceConfig: ActionListDataSourceConfig = {
-  query: {
-    base_table: 'customer_scenario_events',
-    scenario_filter: { codes: ['LONG_NO_CONTACT'] },
-    status_filter: ['pending']
-  },
-  columns: [
-    { key: 'customer_name', label: '고객명', source: 'customer', field: 'name', width: '120px', clickable: true },
-    { key: 'grade', label: '등급', source: 'customer', field: 'grade', width: '80px', format: { type: 'badge' } },
-    { key: 'total_aum', label: 'AUM', source: 'customer', field: 'total_aum', width: '120px', align: 'right', format: { type: 'currency' }, sortable: true },
-    { key: 'days', label: '미접촉', source: 'event', field: 'event_data.days_since_contact', width: '80px', align: 'center', sortable: true }
-  ],
-  filters: [
-    { 
-      key: 'customer_group', 
-      label: '고객 그룹', 
-      type: 'select', 
-      options: [
-        { value: 'all', label: '전체' }, 
-        { value: 'vip', label: '주요고객' },
-        { value: 'general', label: '일반' }
-      ],
-      default_value: 'all',
-      target: { source: 'customer', field: 'customer_group' }
-    }
-  ],
-  default_sort: { field: 'event_data.days_since_contact', direction: 'desc' },
-  default_page_size: 10,
-  row_actions: [
-    { key: 'call', label: '전화', icon: 'phone', type: 'call', variant: 'primary' },
-    { key: 'sms', label: '문자', icon: 'message-square', type: 'message', variant: 'secondary' }
-  ]
-}
+export const noContactDataSourceConfig: ActionListDataSourceConfig =
+  getDataSource('no-contact')?.config || {} as ActionListDataSourceConfig
 
-// VIP 강등 위험 데이터소스 설정
-export const vipRiskDataSourceConfig: ActionListDataSourceConfig = {
-  query: {
-    base_table: 'customer_scenario_events',
-    scenario_filter: { codes: ['VIP_DOWNGRADE_RISK'] },
-    status_filter: ['pending']
-  },
-  columns: [
-    { key: 'customer_name', label: '고객명', source: 'customer', field: 'name', width: '120px', clickable: true },
-    { key: 'grade', label: '현재 등급', source: 'customer', field: 'grade', width: '80px', format: { type: 'badge' } },
-    { key: 'total_aum', label: '현재 AUM', source: 'customer', field: 'total_aum', width: '120px', align: 'right', format: { type: 'currency' } },
-    { key: 'shortfall', label: '부족 금액', source: 'event', field: 'event_data.shortfall', width: '120px', align: 'right', format: { type: 'currency' } }
-  ],
-  filters: [],
-  default_sort: { field: 'event_data.shortfall', direction: 'asc' },
-  default_page_size: 10,
-  row_actions: [
-    { key: 'call', label: '전화', icon: 'phone', type: 'call', variant: 'primary' },
-    { key: 'detail', label: '상세', icon: 'info', type: 'popup', variant: 'ghost' }
-  ]
-}
+export const vipRiskDataSourceConfig: ActionListDataSourceConfig =
+  getDataSource('vip-risk')?.config || {} as ActionListDataSourceConfig
 
 // 목 데이터: 만기 고객
 export const mockMaturityData: ActionListData[] = [
@@ -345,3 +265,42 @@ export const mockVipRiskData: ActionListData[] = [
     priority: 1
   }
 ]
+
+// ----- 바 차트용 목 데이터 (리스트형) -----
+
+/** 월별 AUM 추이 (억 원): 예금, 펀드, 주식 */
+export const mockBarChartMonthlyAum: BarChartDataItem[] = [
+  { label: '1월', values: [120, 85, 45] },
+  { label: '2월', values: [135, 92, 52] },
+  { label: '3월', values: [128, 98, 58] },
+  { label: '4월', values: [142, 105, 62] },
+  { label: '5월', values: [138, 110, 68] },
+  { label: '6월', values: [155, 118, 75] }
+]
+export const mockBarChartMonthlyAumSeries = ['예금', '펀드', '주식']
+
+/** 고객등급별 이벤트 건수: 만기, 미접촉, VIP위험 */
+export const mockBarChartEventByGrade: BarChartDataItem[] = [
+  { label: 'VIP', values: [4, 3, 3] },
+  { label: '일반', values: [2, 1, 0] },
+  { label: '우량', values: [1, 0, 0] }
+]
+export const mockBarChartEventByGradeSeries = ['만기', '장기미접촉', 'VIP강등위험']
+
+/** 시나리오 유형별 건수 (가로 바용): 라벨 = 시나리오명, 값 = 건수 */
+export const mockBarChartScenarioCount: BarChartDataItem[] = [
+  { label: '예금 만기', values: [5] },
+  { label: '펀드 만기', values: [3] },
+  { label: 'ELS 만기', values: [1] },
+  { label: '장기 미접촉', values: [4] },
+  { label: 'VIP 강등 위험', values: [3] }
+]
+export const mockBarChartScenarioCountSeries = ['건수']
+
+/** 상품별 AUM 비중 (억): 정기예금, MMDA, 펀드, ELS, 채권 */
+export const mockBarChartProductAum: BarChartDataItem[] = [
+  { label: '1월', values: [320, 180, 250, 90, 120] },
+  { label: '2월', values: [335, 195, 265, 95, 125] },
+  { label: '3월', values: [328, 202, 272, 98, 130] }
+]
+export const mockBarChartProductAumSeries = ['정기예금', 'MMDA', '펀드', 'ELS', '채권']

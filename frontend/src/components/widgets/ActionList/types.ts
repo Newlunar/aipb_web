@@ -10,6 +10,7 @@ export interface ColumnConfig {
     options?: Record<string, any>
   }
   sortable?: boolean
+  filterable?: boolean
   clickable?: boolean
 }
 
@@ -65,6 +66,13 @@ export interface ActionListTemplateConfig {
   }
 }
 
+/** 쿼리용 동적 필터 (Supabase/DB 조건) */
+export interface QueryFilter {
+  column: string
+  operator: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'like' | 'ilike' | 'is'
+  value: unknown
+}
+
 export interface ActionListDataSourceConfig {
   query: {
     base_table: string
@@ -80,6 +88,8 @@ export interface ActionListDataSourceConfig {
       relative_days?: { start: number; end: number }
       absolute_dates?: { start: string; end: string }
     }
+    /** 쿼리 조건용 동적 필터 (column, operator, value) */
+    filters?: QueryFilter[]
   }
   columns: ColumnConfig[]
   filters: FilterConfig[]
