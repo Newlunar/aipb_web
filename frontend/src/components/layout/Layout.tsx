@@ -3,12 +3,14 @@ import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { Dashboard } from '../../pages/Dashboard'
 import { Customers } from '../../pages/Customers'
+import { Agents } from '../../pages/Agents'
 import { WidgetSettings } from '../../pages/WidgetSettings'
 
 // 페이지 설정
 const pageConfig: Record<string, { title: string; subtitle: string; component: React.ComponentType }> = {
   '/': { title: '대시보드', subtitle: '오늘의 주요 업무와 고객 현황을 확인하세요.', component: Dashboard },
   '/customers': { title: '고객 관리', subtitle: '고객 정보를 조회하고 관리합니다.', component: Customers },
+  '/agents': { title: 'Agent 관리', subtitle: 'AI Agent를 조회하고 관리합니다.', component: Agents },
   '/strategy': { title: '투자전략', subtitle: '투자전략을 수립하고 관리합니다.', component: () => <PlaceholderPage name="투자전략" /> },
   '/knowledge': { title: '지식관리', subtitle: '투자 관련 지식을 관리합니다.', component: () => <PlaceholderPage name="지식관리" /> },
   '/lab': { title: '실험실', subtitle: '새로운 기능을 테스트합니다.', component: () => <PlaceholderPage name="실험실" /> },

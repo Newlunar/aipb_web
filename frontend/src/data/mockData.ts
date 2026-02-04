@@ -304,3 +304,126 @@ export const mockBarChartProductAum: BarChartDataItem[] = [
   { label: '3월', values: [328, 202, 272, 98, 130] }
 ]
 export const mockBarChartProductAumSeries = ['정기예금', 'MMDA', '펀드', 'ELS', '채권']
+
+// ----- Agent 목 데이터 -----
+
+export interface AgentData {
+  id: string
+  name: string
+  type: 'ai' | 'human' | 'hybrid'
+  status: 'active' | 'inactive' | 'maintenance'
+  description: string
+  capabilities: string[]
+  lastActive: string
+  tasksCompleted: number
+  successRate: number
+  avgResponseTime: number // 초 단위
+  createdAt: string
+}
+
+export const mockAgentData: AgentData[] = [
+  {
+    id: 'agent-001',
+    name: '고객 상담 AI',
+    type: 'ai',
+    status: 'active',
+    description: '고객 문의 응대 및 기본 상담을 담당하는 AI 에이전트입니다.',
+    capabilities: ['고객문의 응대', '상품 안내', 'FAQ 응답', '상담 예약'],
+    lastActive: '2026-02-04T14:30:00',
+    tasksCompleted: 1524,
+    successRate: 94.2,
+    avgResponseTime: 2.3,
+    createdAt: '2025-06-15'
+  },
+  {
+    id: 'agent-002',
+    name: '포트폴리오 분석 AI',
+    type: 'ai',
+    status: 'active',
+    description: '고객 포트폴리오를 분석하고 투자 제안을 생성하는 AI 에이전트입니다.',
+    capabilities: ['포트폴리오 분석', '리스크 평가', '투자 제안', '시장 분석'],
+    lastActive: '2026-02-04T14:25:00',
+    tasksCompleted: 892,
+    successRate: 97.8,
+    avgResponseTime: 5.7,
+    createdAt: '2025-07-20'
+  },
+  {
+    id: 'agent-003',
+    name: '문서 처리 AI',
+    type: 'ai',
+    status: 'active',
+    description: '계약서 및 금융 문서를 자동으로 처리하는 AI 에이전트입니다.',
+    capabilities: ['문서 분류', 'OCR 처리', '데이터 추출', '문서 검증'],
+    lastActive: '2026-02-04T14:20:00',
+    tasksCompleted: 3241,
+    successRate: 99.1,
+    avgResponseTime: 1.8,
+    createdAt: '2025-05-10'
+  },
+  {
+    id: 'agent-004',
+    name: '일정 관리 AI',
+    type: 'ai',
+    status: 'maintenance',
+    description: '상담 일정 조율 및 알림을 관리하는 AI 에이전트입니다.',
+    capabilities: ['일정 조율', '알림 발송', '충돌 감지', '리마인더'],
+    lastActive: '2026-02-04T10:00:00',
+    tasksCompleted: 756,
+    successRate: 91.5,
+    avgResponseTime: 0.8,
+    createdAt: '2025-08-05'
+  },
+  {
+    id: 'agent-005',
+    name: '리스크 모니터링 AI',
+    type: 'ai',
+    status: 'active',
+    description: '실시간 시장 리스크를 모니터링하고 알림을 발송하는 AI 에이전트입니다.',
+    capabilities: ['실시간 모니터링', '이상 탐지', '알림 발송', '리포트 생성'],
+    lastActive: '2026-02-04T14:35:00',
+    tasksCompleted: 2156,
+    successRate: 98.5,
+    avgResponseTime: 0.5,
+    createdAt: '2025-04-22'
+  },
+  {
+    id: 'agent-006',
+    name: '고객 분류 AI',
+    type: 'ai',
+    status: 'inactive',
+    description: '고객을 세그먼트별로 분류하고 타겟팅 전략을 제안하는 AI 에이전트입니다.',
+    capabilities: ['고객 세그먼테이션', '행동 분석', '타겟팅 제안', '캠페인 최적화'],
+    lastActive: '2026-01-28T16:00:00',
+    tasksCompleted: 445,
+    successRate: 88.3,
+    avgResponseTime: 8.2,
+    createdAt: '2025-09-12'
+  },
+  {
+    id: 'agent-007',
+    name: '자동 리포팅 AI',
+    type: 'ai',
+    status: 'active',
+    description: '정기 리포트를 자동 생성하고 배포하는 AI 에이전트입니다.',
+    capabilities: ['리포트 생성', '데이터 시각화', '자동 배포', '맞춤형 요약'],
+    lastActive: '2026-02-04T09:00:00',
+    tasksCompleted: 1823,
+    successRate: 96.7,
+    avgResponseTime: 12.5,
+    createdAt: '2025-03-18'
+  },
+  {
+    id: 'agent-008',
+    name: '컴플라이언스 검토 AI',
+    type: 'hybrid',
+    status: 'active',
+    description: '규제 준수 여부를 자동으로 검토하는 하이브리드 에이전트입니다.',
+    capabilities: ['규제 검토', '위반 탐지', '보고서 작성', '가이드라인 검증'],
+    lastActive: '2026-02-04T13:45:00',
+    tasksCompleted: 678,
+    successRate: 99.4,
+    avgResponseTime: 15.3,
+    createdAt: '2025-10-01'
+  }
+]
