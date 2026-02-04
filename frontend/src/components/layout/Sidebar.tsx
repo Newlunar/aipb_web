@@ -1,6 +1,6 @@
-import { 
-  LayoutDashboard, 
-  Users, 
+import {
+  LayoutDashboard,
+  Users,
   TrendingUp,
   BookOpen,
   FlaskConical,
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import type { ElementType } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
 
 interface MenuItem {
   id: string
@@ -29,19 +30,15 @@ const menuItems: MenuItem[] = [
   { id: 'widgets', label: '위젯설정', icon: LayoutGrid, path: '/widgets' },
 ]
 
-interface SidebarProps {
-  currentPath?: string
-  onNavigate?: (path: string) => void
-}
-
-export function Sidebar({ currentPath = '/', onNavigate }: SidebarProps) {
+export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
-  
+  const navigate = useNavigate()
+
   // 아이콘 크기 통일 (24px)
   const iconSize = 24
 
   return (
-    <aside 
+    <aside
       className={`
         flex flex-col bg-white border-r border-gray-200 transition-all duration-300
         ${collapsed ? 'w-14' : 'w-52'}
@@ -60,7 +57,7 @@ export function Sidebar({ currentPath = '/', onNavigate }: SidebarProps) {
             </div>
           </div>
         )}
-        <button 
+        <button
           onClick={() => setCollapsed(!collapsed)}
           className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
         >
@@ -72,36 +69,39 @@ export function Sidebar({ currentPath = '/', onNavigate }: SidebarProps) {
       <nav className="flex-1 py-4">
         <ul className={`space-y-1 ${collapsed ? 'px-1' : 'px-2'}`}>
           {menuItems.map((item) => {
-            const isActive = currentPath === item.path
             const IconComponent = item.icon
             return (
               <li key={item.id}>
-                <button
-                  onClick={() => onNavigate?.(item.path)}
-                  className={`
+                <NavLink
+                  to={item.path}
+                  className={({ isActive }) => `
                     w-full flex items-center rounded-lg transition-colors
                     ${collapsed ? 'justify-center p-2' : 'gap-3 px-3 py-2.5'}
-                    ${isActive 
-                      ? 'bg-gray-100 text-primary font-medium' 
+                    ${isActive
+                      ? 'bg-gray-100 text-primary font-medium'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }
                   `}
                   title={collapsed ? item.label : undefined}
                 >
-                  <span className={`flex-shrink-0 ${isActive ? 'text-primary' : ''}`}>
-                    <IconComponent size={iconSize} />
-                  </span>
-                  {!collapsed && (
+                  {({ isActive }) => (
                     <>
-                      <span className="flex-1 text-left text-base">{item.label}</span>
-                      {item.badge && (
-                        <span className="px-2 py-0.5 text-sm rounded-full bg-primary text-white">
-                          {item.badge}
-                        </span>
+                      <span className={`flex-shrink-0 ${isActive ? 'text-primary' : ''}`}>
+                        <IconComponent size={iconSize} />
+                      </span>
+                      {!collapsed && (
+                        <>
+                          <span className="flex-1 text-left text-base">{item.label}</span>
+                          {item.badge && (
+                            <span className="px-2 py-0.5 text-sm rounded-full bg-primary text-white">
+                              {item.badge}
+                            </span>
+                          )}
+                        </>
                       )}
                     </>
                   )}
-                </button>
+                </NavLink>
               </li>
             )
           })}
@@ -111,7 +111,7 @@ export function Sidebar({ currentPath = '/', onNavigate }: SidebarProps) {
       {/* 하단 설정 */}
       <div className={`border-t border-gray-200 ${collapsed ? 'p-1' : 'p-2'}`}>
         <button
-          onClick={() => onNavigate?.('/settings')}
+          onClick={() => navigate('/settings')}
           className={`
             w-full flex items-center rounded-lg transition-colors
             ${collapsed ? 'justify-center p-2' : 'gap-3 px-3 py-2.5'}
