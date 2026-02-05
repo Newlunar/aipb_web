@@ -1,4 +1,4 @@
-export type PageType = 'dashboard' | 'customers' | 'strategy' | 'knowledge' | 'lab' | 'widgets' | 'settings'
+export type PageType = 'dashboard' | 'customers' | 'agents' | 'strategy' | 'knowledge' | 'lab' | 'widgets' | 'settings'
 
 export interface WidgetTemplate {
   id: string
@@ -89,6 +89,7 @@ export const METRIC_ID_TO_STATS_KEY: Record<string, string> = {
 export const PAGE_NAMES: Record<PageType, string> = {
   dashboard: '대시보드',
   customers: '고객관리',
+  agents: 'Agent 관리',
   strategy: '투자전략',
   knowledge: '지식관리',
   lab: '실험실',
@@ -99,6 +100,7 @@ export const PAGE_NAMES: Record<PageType, string> = {
 /** 위젯 노출 페이지 선택용 목록: 고객관리, 투자전략, 지식관리, 실험실 */
 export const WIDGET_PAGE_OPTIONS: PageType[] = [
   'customers',
+  'agents',
   'strategy',
   'knowledge',
   'lab'

@@ -7,7 +7,8 @@ import {
   LayoutGrid,
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Bot
 } from 'lucide-react'
 import { useState } from 'react'
 import type { ElementType } from 'react'
@@ -24,6 +25,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: '대시보드', icon: LayoutDashboard, path: '/' },
   { id: 'customers', label: '고객 관리', icon: Users, path: '/customers' },
+  { id: 'agents', label: 'Agent 관리', icon: Bot, path: '/agents' },
   { id: 'strategy', label: '투자전략', icon: TrendingUp, path: '/strategy' },
   { id: 'knowledge', label: '지식관리', icon: BookOpen, path: '/knowledge' },
   { id: 'lab', label: '실험실', icon: FlaskConical, path: '/lab' },

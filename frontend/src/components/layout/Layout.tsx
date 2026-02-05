@@ -6,6 +6,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 const PAGE_INFO: Record<string, { title: string; subtitle: string }> = {
   '/': { title: '대시보드', subtitle: '오늘의 주요 업무와 고객 현황을 확인하세요.' },
   '/customers': { title: '고객 관리', subtitle: '고객 정보를 조회하고 관리합니다.' },
+  '/agents': { title: 'Agent 관리', subtitle: 'AI 에이전트를 관리하고 모니터링합니다.' },
   '/strategy': { title: '투자전략', subtitle: '투자전략을 수립하고 관리합니다.' },
   '/knowledge': { title: '지식관리', subtitle: '투자 관련 지식을 관리합니다.' },
   '/lab': { title: '실험실', subtitle: '새로운 기능을 테스트합니다.' },
