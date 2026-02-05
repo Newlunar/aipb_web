@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { ChevronUp, ChevronDown, GripVertical, Pin, PinOff } from 'lucide-react'
+import { ChevronUp, ChevronDown, GripVertical, Pin } from 'lucide-react'
 import { widgetTemplates, type SavedWidget } from '../../types/widget'
 import { DynamicActionListWidget } from './DynamicActionListWidget'
 import { SummaryCardWidget } from './SummaryCard'
