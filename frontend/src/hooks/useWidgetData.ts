@@ -1,7 +1,75 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { useState, useEffect, useCallback } from 'react'
+import { api } from '../lib/api'
 import type { ActionListData } from '../components/widgets/ActionList'
-import { getDataSource } from '../types/datasource'
+import { getDataSource, type FeedDataSourceConfig } from '../types/datasource'
+import {
+  getApiPathForCode,
+  type ActionListWidgetCode,
+  type BarChartWidgetCode,
+  type TextBlockWidgetCode,
+  DATA_SOURCE_TO_WIDGET_CODE,
+} from '../types/widgetApiMapping'
+
+// ----- API 경로 직접 입력 기반 조회 -----
+
+export function useWidgetDataByApiPath<T = unknown>(options: {
+  apiPath: string
+  apiParams?: Record<string, string | number | undefined | null>
+  skip?: boolean
+}): {
+  data: T | null
+  isLoading: boolean
+  error: Error | null
+  refetch: () => void
+} {
+  const [data, setData] = useState<T | null>(null)
+  const [isLoading, setIsLoading] = useState(!options.skip)
+  const [error, setError] = useState<Error | null>(null)
+
+  const fetchData = useCallback(async () => {
+    if (options.skip || !options.apiPath?.trim()) {
+      setData(null)
+      setIsLoading(false)
+      return
+    }
+    setIsLoading(true)
+    setError(null)
+    try {
+      const params = options.apiParams
+        ? Object.fromEntries(
+            Object.entries(options.apiParams).filter(
+              ([, v]) => v !== undefined && v !== null && v !== ''
+            ) as [string, string | number][]
+          )
+        : undefined
+      const raw = await api.get<T>(options.apiPath, params as Record<string, string | number>)
+      setData(raw)
+    } catch (err) {
+      console.error('Error fetching widget data by API path:', err)
+      setError(err instanceof Error ? err : new Error('Unknown error'))
+      setData(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [options.apiPath, options.skip, JSON.stringify(options.apiParams)])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  return {
+    data,
+    isLoading: options.skip ? false : isLoading,
+    error,
+    refetch: fetchData,
+  }
+}
+
+/** Bar Chart API 응답 타입 */
+export interface BarChartDataResponse {
+  data: Array<{ label: string; values: number[] }>
+  seriesLabels: string[]
+}
 
 interface UseWidgetDataOptions {
   /** WM 사용자 ID; 지정 시 해당 WM 담당 고객의 이벤트만 조회 */
@@ -58,177 +126,15 @@ export function useWidgetData(options: UseWidgetDataOptions = {}): UseWidgetData
     setError(null)
 
     try {
-      // 0. WM 지정 시 해당 WM 담당 고객 ID 목록 조회
-      let customerIdsForWm: string[] | null = null
-      if (options.wmId) {
-        const { data: custData, error: custError } = await supabase
-          .from('customers')
-          .select('id')
-          .eq('wm_id', options.wmId)
-        if (custError) throw custError
-        customerIdsForWm = (custData ?? []).map((c: { id: string }) => c.id)
-        if (customerIdsForWm.length === 0) {
-          setData([])
-          setIsLoading(false)
-          return
-        }
+      const params: Record<string, string | number | undefined | null> = {
+        wm_id: options.wmId ?? undefined,
+        scenario_codes: options.scenarioCodes?.length ? options.scenarioCodes.join(',') : undefined,
+        status: options.status?.length ? options.status.join(',') : undefined,
+        limit: options.limit ?? undefined,
+        filters: options.filters?.length ? JSON.stringify(options.filters) : undefined
       }
-
-      // 1. 먼저 시나리오 코드로 시나리오 ID 조회
-      let scenarioIds: string[] = []
-      
-      if (options.scenarioCodes && options.scenarioCodes.length > 0) {
-        const { data: scenarios, error: scenarioError } = await supabase
-          .from('scenarios')
-          .select('id, code')
-          .in('code', options.scenarioCodes)
-        
-        if (scenarioError) throw scenarioError
-        scenarioIds = (scenarios ?? []).map((s: { id: string }) => s.id)
-        
-        // 해당 시나리오가 없으면 빈 배열 반환
-        if (scenarioIds.length === 0) {
-          setData([])
-          setIsLoading(false)
-          return
-        }
-      }
-
-      // 2. 이벤트 데이터 조회
-      let query = supabase
-        .from('customer_scenario_events')
-        .select(`
-          id,
-          customer_id,
-          scenario_id,
-          account_id,
-          event_date,
-          event_data,
-          status,
-          priority,
-          assigned_wm_id,
-          notes,
-          created_at,
-          customers (
-            id,
-            name,
-            phone,
-            email,
-            customer_group,
-            grade,
-            total_aum
-          ),
-          scenarios (
-            id,
-            code,
-            name,
-            category,
-            color,
-            icon
-          )
-        `)
-
-      // 시나리오 ID 필터
-      if (scenarioIds.length > 0) {
-        query = query.in('scenario_id', scenarioIds)
-      }
-
-      // WM 담당 고객만 필터
-      if (customerIdsForWm && customerIdsForWm.length > 0) {
-        query = query.in('customer_id', customerIdsForWm)
-      }
-
-      // 상태 필터
-      if (options.status && options.status.length > 0) {
-        query = query.in('status', options.status)
-      }
-
-      // 동적 필터 적용
-      if (options.filters && Array.isArray(options.filters)) {
-        options.filters.forEach((filter) => {
-          const { column, operator, value } = filter
-
-          if (!column || !operator || value === undefined) {
-            console.warn('Invalid filter:', filter)
-            return
-          }
-
-          switch (operator) {
-            case 'eq':
-              query = query.eq(column, value)
-              break
-            case 'neq':
-              query = query.neq(column, value)
-              break
-            case 'gt':
-              query = query.gt(column, value)
-              break
-            case 'gte':
-              query = query.gte(column, value)
-              break
-            case 'lt':
-              query = query.lt(column, value)
-              break
-            case 'lte':
-              query = query.lte(column, value)
-              break
-            case 'in':
-              if (Array.isArray(value)) {
-                query = query.in(column, value)
-              } else {
-                console.warn('Invalid value for "in" operator, expected array:', filter)
-              }
-              break
-            case 'like':
-              query = query.like(column, value)
-              break
-            case 'ilike':
-              query = query.ilike(column, value)
-              break
-            case 'is':
-              query = query.is(column, value)
-              break
-            default:
-              console.warn('Unknown filter operator:', operator)
-          }
-        })
-      }
-
-      // 정렬
-      query = query.order('event_date', { ascending: true })
-      
-      // 제한
-      if (options.limit) {
-        query = query.limit(options.limit)
-      }
-
-      const { data: rawData, error: queryError } = await query
-
-      if (queryError) {
-        throw queryError
-      }
-
-      // 데이터 변환
-      const transformedData: ActionListData[] = (rawData || [])
-        .filter((item: any) => item.customers && item.scenarios) // null 체크
-        .map((item: any) => ({
-          id: item.id,
-          customer_id: item.customer_id,
-          customer_name: item.customers?.name || '',
-          customer_group: item.customers?.customer_group || 'general',
-          grade: item.customers?.grade || '',
-          total_aum: item.customers?.total_aum || 0,
-          phone: item.customers?.phone || '',
-          scenario_code: item.scenarios?.code || '',
-          scenario_name: item.scenarios?.name || '',
-          scenario_color: item.scenarios?.color || '#6B7280',
-          event_date: item.event_date,
-          event_data: item.event_data || {},
-          status: item.status,
-          priority: item.priority
-        }))
-
-      setData(transformedData)
+      const rawData = await api.get<ActionListData[]>('/api/widgets/action-list/events', params)
+      setData(Array.isArray(rawData) ? rawData : [])
     } catch (err) {
       console.error('Error fetching widget data:', err)
       setError(err instanceof Error ? err : new Error('Unknown error'))
@@ -272,213 +178,227 @@ export function useVipRiskData() {
 }
 
 /**
- * 데이터소스 명세 기반 데이터 조회 Hook
- *
- * @example
- * const { data, isLoading, dataSourceSpec } = useDataSourceData({
- *   dataSourceId: 'maturity'
- * })
+ * 데이터소스 명세 기반 데이터 조회 Hook (widgetCode API 사용으로 전환)
+ * @deprecated widgetCode 기반 useActionListByCode 사용 권장
  */
 export function useDataSourceData(options: UseDataSourceOptions): UseDataSourceResult {
+  const widgetCode = DATA_SOURCE_TO_WIDGET_CODE[options.dataSourceId] as ActionListWidgetCode | undefined
+  const result = useActionListByCode({
+    widgetCode: widgetCode ?? 'AL001',
+    wmId: options.wmId,
+  })
+  const dataSourceSpec = getDataSource(options.dataSourceId)
+  return { ...result, dataSourceSpec }
+}
+
+/**
+ * 위젯 코드 기반 액션리스트 데이터 조회
+ */
+export function useActionListByCode(options: {
+  widgetCode: ActionListWidgetCode
+  wmId?: string | null
+}): UseDataSourceResult {
   const [data, setData] = useState<ActionListData[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
-  // 데이터소스 명세 가져오기
-  const dataSourceSpec = getDataSource(options.dataSourceId)
+  const fetchData = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const path = getApiPathForCode(options.widgetCode)
+      const rawData = await api.get<ActionListData[]>(path, {
+        wm_id: options.wmId ?? undefined,
+      })
+      setData(Array.isArray(rawData) ? rawData : [])
+    } catch (err) {
+      console.error('Error fetching action list by code:', err)
+      setError(err instanceof Error ? err : new Error('Unknown error'))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [options.widgetCode, options.wmId])
 
-  const fetchData = async () => {
-    if (!dataSourceSpec) {
-      setError(new Error(`데이터소스를 찾을 수 없습니다: ${options.dataSourceId}`))
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  return { data, isLoading, error, refetch: fetchData }
+}
+
+/**
+ * 위젯 코드 기반 바 차트 데이터 조회
+ */
+export function useBarChartByCode(options: {
+  widgetCode: BarChartWidgetCode
+  wmId?: string | null
+}): {
+  data: BarChartDataResponse
+  isLoading: boolean
+  error: Error | null
+  refetch: () => void
+} {
+  const [data, setData] = useState<BarChartDataResponse>({ data: [], seriesLabels: [] })
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const path = getApiPathForCode(options.widgetCode)
+      const raw = await api.get<BarChartDataResponse>(path, {
+        wm_id: options.wmId ?? undefined,
+      })
+      setData(
+        raw && Array.isArray(raw.data)
+          ? { data: raw.data, seriesLabels: raw.seriesLabels ?? [] }
+          : { data: [], seriesLabels: [] }
+      )
+    } catch (err) {
+      console.error('Error fetching bar chart by code:', err)
+      setError(err instanceof Error ? err : new Error('Unknown error'))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [options.widgetCode, options.wmId])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  return { data, isLoading, error, refetch: fetchData }
+}
+
+/**
+ * 위젯 코드 기반 텍스트 블록(피드) 데이터 조회
+ */
+export function useTextBlockByCode(options: {
+  widgetCode: TextBlockWidgetCode
+  feedType?: string | null
+  limit?: number
+  skip?: boolean
+}): UseFeedDataResult {
+  const [data, setData] = useState<FeedItem[]>([])
+  const [isLoading, setIsLoading] = useState(!options.skip)
+  const [error, setError] = useState<Error | null>(null)
+
+  const fetchData = useCallback(async () => {
+    if (options.skip) {
+      setData([])
       setIsLoading(false)
       return
     }
+    setIsLoading(true)
+    setError(null)
+    try {
+      const path = getApiPathForCode(options.widgetCode)
+      const rawData = await api.get<Array<{ id: string; title: string; content: string }>>(path, {
+        feed_type: options.feedType ?? undefined,
+        limit: options.limit ?? 5,
+      })
+      const items: FeedItem[] = (Array.isArray(rawData) ? rawData : []).map((row) => ({
+        id: String(row.id ?? ''),
+        title: String(row.title ?? ''),
+        content: String(row.content ?? ''),
+      }))
+      setData(items)
+    } catch (err) {
+      console.error('Error fetching text block by code:', err)
+      setError(err instanceof Error ? err : new Error('Unknown error'))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [options.widgetCode, options.feedType, options.limit, options.skip])
 
-    // 메트릭 타입은 별도 처리 필요 (추후 구현)
-    if (dataSourceSpec.category === 'metric' || dataSourceSpec.category === 'schedule') {
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  return {
+    data,
+    isLoading: options.skip ? false : isLoading,
+    error,
+    refetch: fetchData,
+  }
+}
+
+/** Feed 아이템 (텍스트 블록용) */
+export interface FeedItem {
+  id: string
+  title: string
+  content: string
+}
+
+interface UseFeedDataOptions {
+  dataSourceId: string
+  /** true면 fetch 생략 */
+  skip?: boolean
+  columnMapping?: { title: string; content: string }
+  queryOverride?: {
+    filters?: Array<{ column: string; operator: string; value: unknown }>
+    order?: { field: string; direction: 'asc' | 'desc' }
+    limit?: number
+  }
+}
+
+interface UseFeedDataResult {
+  data: FeedItem[]
+  isLoading: boolean
+  error: Error | null
+  refetch: () => void
+}
+
+/**
+ * feeds 테이블에서 피드 데이터 조회 (텍스트 블록 위젯용)
+ */
+export function useFeedData(options: UseFeedDataOptions): UseFeedDataResult {
+  const [data, setData] = useState<FeedItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+
+  const fetchData = async () => {
+    if (options.skip) {
+      setData([])
+      setIsLoading(false)
+      return
+    }
+    const spec = getDataSource(options.dataSourceId)
+    if (!spec || spec.category !== 'feed') {
       setData([])
       setIsLoading(false)
       return
     }
 
+    const feedConfig = spec.config as FeedDataSourceConfig
+    const q = options.queryOverride ?? {}
+    const order = q.order ?? feedConfig.query.order ?? { field: 'published_at', direction: 'desc' }
+    const limit = q.limit ?? feedConfig.query.limit ?? 5
+    const filters = q.filters ?? feedConfig.query.filters ?? []
+    const feedTypeFilter = filters.find((f: { column: string }) => f.column === 'feed_type')
+    const feedTypes = Array.isArray(feedTypeFilter?.value)
+      ? (feedTypeFilter.value as string[]).join(',')
+      : undefined
+
     setIsLoading(true)
     setError(null)
 
     try {
-      const config = dataSourceSpec.config
-
-      // 0. WM 지정 시 해당 WM 담당 고객 ID 목록 조회
-      let customerIdsForWm: string[] | null = null
-      if (options.wmId) {
-        const { data: custData, error: custError } = await supabase
-          .from('customers')
-          .select('id')
-          .eq('wm_id', options.wmId)
-        if (custError) throw custError
-        customerIdsForWm = (custData ?? []).map((c: { id: string }) => c.id)
-        if (customerIdsForWm.length === 0) {
-          setData([])
-          setIsLoading(false)
-          return
-        }
-      }
-
-      // 1. 시나리오 코드 → ID 변환
-      let scenarioIds: string[] = []
-      if (config.query.scenario_filter?.codes) {
-        const { data: scenarios, error: scenarioError } = await supabase
-          .from('scenarios')
-          .select('id, code')
-          .in('code', config.query.scenario_filter.codes)
-
-        if (scenarioError) throw scenarioError
-        scenarioIds = (scenarios ?? []).map((s: { id: string }) => s.id)
-
-        if (scenarioIds.length === 0) {
-          setData([])
-          setIsLoading(false)
-          return
-        }
-      }
-
-      // 2. 이벤트 데이터 조회
-      let query = supabase
-        .from(config.query.base_table)
-        .select(`
-          id,
-          customer_id,
-          scenario_id,
-          account_id,
-          event_date,
-          event_data,
-          status,
-          priority,
-          assigned_wm_id,
-          notes,
-          created_at,
-          customers (
-            id,
-            name,
-            phone,
-            email,
-            customer_group,
-            grade,
-            total_aum
-          ),
-          scenarios (
-            id,
-            code,
-            name,
-            category,
-            color,
-            icon
-          )
-        `)
-
-      // 동적 필터 적용
-      if (config.query.filters && Array.isArray(config.query.filters)) {
-        config.query.filters.forEach((filter: any) => {
-          const { column, operator, value } = filter
-
-          // 필터 값 검증
-          if (!column || !operator || value === undefined) {
-            console.warn('Invalid filter:', filter)
-            return
-          }
-
-          // 연산자별 쿼리 적용
-          switch (operator) {
-            case 'eq':
-              query = query.eq(column, value)
-              break
-            case 'neq':
-              query = query.neq(column, value)
-              break
-            case 'gt':
-              query = query.gt(column, value)
-              break
-            case 'gte':
-              query = query.gte(column, value)
-              break
-            case 'lt':
-              query = query.lt(column, value)
-              break
-            case 'lte':
-              query = query.lte(column, value)
-              break
-            case 'in':
-              if (Array.isArray(value)) {
-                query = query.in(column, value)
-              } else {
-                console.warn('Invalid value for "in" operator, expected array:', filter)
-              }
-              break
-            case 'like':
-              query = query.like(column, value)
-              break
-            case 'ilike':
-              query = query.ilike(column, value)
-              break
-            case 'is':
-              query = query.is(column, value)
-              break
-            default:
-              console.warn('Unknown filter operator:', operator)
-          }
-        })
-      }
-
-      // 레거시 호환성: scenario_filter와 status_filter 지원
-      // (기존 데이터소스가 새 구조로 마이그레이션될 때까지 유지)
-      if (scenarioIds.length > 0) {
-        query = query.in('scenario_id', scenarioIds)
-      }
-
-      if (config.query.status_filter) {
-        query = query.in('status', config.query.status_filter)
-      }
-
-      // WM 담당 고객만 필터
-      if (customerIdsForWm && customerIdsForWm.length > 0) {
-        query = query.in('customer_id', customerIdsForWm)
-      }
-
-      // 정렬
-      const sortField = config.default_sort?.field || 'event_date'
-      const sortDirection = config.default_sort?.direction === 'desc' ? false : true
-      query = query.order(sortField, { ascending: sortDirection })
-
-      // 제한
-      const limit = config.default_page_size ? config.default_page_size * 5 : 50
-      query = query.limit(limit)
-
-      const { data: rawData, error: queryError } = await query
-
-      if (queryError) throw queryError
-
-      // 3. 데이터 변환
-      const transformedData: ActionListData[] = (rawData || [])
-        .filter((item: any) => item.customers && item.scenarios)
-        .map((item: any) => ({
-          id: item.id,
-          customer_id: item.customer_id,
-          customer_name: item.customers?.name || '',
-          customer_group: item.customers?.customer_group || 'general',
-          grade: item.customers?.grade || '',
-          total_aum: item.customers?.total_aum || 0,
-          phone: item.customers?.phone || '',
-          scenario_code: item.scenarios?.code || '',
-          scenario_name: item.scenarios?.name || '',
-          scenario_color: item.scenarios?.color || '#6B7280',
-          event_date: item.event_date,
-          event_data: item.event_data || {},
-          status: item.status,
-          priority: item.priority
-        }))
-
-      setData(transformedData)
+      const rawData = await api.get<{ id: string; title: string; content: string }[]>('/api/widgets/text-block/data', {
+        data_source: 'feed',
+        feed_type: feedTypes,
+        limit,
+        order_field: order.field,
+        order_direction: order.direction
+      })
+      const items: FeedItem[] = (Array.isArray(rawData) ? rawData : []).map((row) => ({
+        id: String(row.id ?? ''),
+        title: String(row.title ?? ''),
+        content: String(row.content ?? '')
+      }))
+      setData(items)
     } catch (err) {
-      console.error('Error fetching data source data:', err)
+      console.error('Error fetching feed data:', err)
       setError(err instanceof Error ? err : new Error('Unknown error'))
     } finally {
       setIsLoading(false)
@@ -487,7 +407,7 @@ export function useDataSourceData(options: UseDataSourceOptions): UseDataSourceR
 
   useEffect(() => {
     fetchData()
-  }, [options.dataSourceId, options.wmId ?? '', JSON.stringify(options.additionalFilters)])
+  }, [options.skip, options.dataSourceId, JSON.stringify(options.columnMapping), JSON.stringify(options.queryOverride)])
 
-  return { data, isLoading, error, refetch: fetchData, dataSourceSpec }
+  return { data, isLoading, error, refetch: fetchData }
 }

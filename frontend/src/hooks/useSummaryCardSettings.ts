@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 
 /**
  * 지정 테이블에서 wm_id + card_type 필터로 조회
@@ -42,21 +42,8 @@ export function useSummaryCardSettings(
     setIsLoading(true)
     setError(null)
     try {
-      const { data, error: fetchError } = await supabase
-        .from(table)
-        .select('card_type, value, value_type, description')
-        .eq('wm_id', wmId)
-
-      if (fetchError) throw fetchError
-
-      const map: SummaryCardSettingsMap = {}
-      ;(data ?? []).forEach((row: { card_type: string; value: string; value_type?: string; description?: string | null }) => {
-        map[row.card_type] = {
-          value: row.value,
-          value_type: row.value_type,
-          description: row.description ?? undefined
-        }
-      })
+      const data = await api.get<SummaryCardSettingsMap>('/api/widgets/summary-card/settings', { wm_id: wmId })
+      const map: SummaryCardSettingsMap = typeof data === 'object' && data !== null ? data : {}
       setSettingsByCardType(map)
     } catch (err) {
       console.error(`Failed to fetch ${table}:`, err)

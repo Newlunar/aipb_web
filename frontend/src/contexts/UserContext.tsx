@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import type { Database } from '../types/database'
 
 export type UserRow = Database['public']['Tables']['users']['Row']
@@ -27,15 +27,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const refetchUsers = useCallback(async (): Promise<UserRow[] | undefined> => {
     setError(null)
     try {
-      const { data, error: fetchError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('is_active', true)
-        .order('name')
-
-      if (fetchError) throw fetchError
-      setUsers(data ?? [])
-      return data ?? []
+      const data = await api.get<UserRow[]>('/api/users')
+      setUsers(Array.isArray(data) ? data : [])
+      return Array.isArray(data) ? data : []
     } catch (err) {
       console.error('Failed to fetch users:', err)
       setError(err instanceof Error ? err : new Error('Unknown error'))

@@ -38,13 +38,13 @@ export const defaultTemplateConfig: ActionListTemplateConfig = {
 // 데이터소스 설정은 이제 types/datasource.ts의 DATA_SOURCE_REGISTRY에서 관리됩니다
 // 레거시 호환성을 위해 여기서 re-export
 export const maturityDataSourceConfig: ActionListDataSourceConfig =
-  getDataSource('maturity')?.config || {} as ActionListDataSourceConfig
+  (getDataSource('maturity')?.config as ActionListDataSourceConfig) ?? ({} as ActionListDataSourceConfig)
 
 export const noContactDataSourceConfig: ActionListDataSourceConfig =
-  getDataSource('no-contact')?.config || {} as ActionListDataSourceConfig
+  (getDataSource('no-contact')?.config as ActionListDataSourceConfig) ?? ({} as ActionListDataSourceConfig)
 
 export const vipRiskDataSourceConfig: ActionListDataSourceConfig =
-  getDataSource('vip-risk')?.config || {} as ActionListDataSourceConfig
+  (getDataSource('vip-risk')?.config as ActionListDataSourceConfig) ?? ({} as ActionListDataSourceConfig)
 
 // 목 데이터: 만기 고객
 export const mockMaturityData: ActionListData[] = [

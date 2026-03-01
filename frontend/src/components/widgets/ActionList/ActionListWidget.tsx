@@ -84,11 +84,8 @@ export function ActionListWidget({
     setCurrentPage(1)
   }
 
-  // 위젯 고정 높이: 5개 리스트 기준 (헤더 56px + 필터 50px + 테이블헤더 40px + 행 36px*5 + 페이지네이션 50px ≈ 260px)
-  const WIDGET_HEIGHT = 260
-
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col" style={{ height: WIDGET_HEIGHT }}>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-full min-h-0">
       {/* 헤더 */}
       <div className="px-5 py-4 border-b border-gray-200 shrink-0">
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
@@ -352,6 +349,12 @@ function getFieldValue(row: ActionListData, source: string, field: string): any 
     if (fieldPath[0] === 'event_data' && fieldPath.length > 1) {
       return row.event_data?.[fieldPath[1]]
     }
+  }
+
+  if (source === 'api') {
+    let v: unknown = row
+    for (const p of fieldPath) v = (v as Record<string, unknown>)?.[p]
+    return v
   }
   
   return null

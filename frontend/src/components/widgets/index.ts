@@ -1,4 +1,5 @@
 export * from './ActionList'
 export * from './BarChart'
+export * from './TextBlock'
 export * from './SummaryCard'
 export { DynamicActionListWidget } from './DynamicActionListWidget'

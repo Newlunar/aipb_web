@@ -3,7 +3,7 @@ export type PageType = 'dashboard' | 'customers' | 'agents' | 'strategy' | 'know
 export interface WidgetTemplate {
   id: string
   name: string
-  type: 'summary-card' | 'action-list' | 'schedule' | 'bar-chart'
+  type: 'summary-card' | 'action-list' | 'schedule' | 'bar-chart' | 'text-block'
   icon: string
   description: string
   gridSize: { width: number; height: number }
@@ -13,12 +13,86 @@ export interface WidgetTemplate {
 
 export interface SavedWidget {
   id: string
+  /** 표현 타입 (action-list, bar-chart 등). templateId로도 사용 */
   templateId: string
   title: string
   config: any
   pages?: PageType[] // 위젯이 노출되는 페이지 목록
   createdAt: string
   updatedAt: string
+}
+
+// ----- API 기반 위젯 config (템플릿 선택 대신 API 경로 직접 입력) -----
+
+export type WidgetDisplayType = 'action-list' | 'bar-chart' | 'text-block' | 'summary-card' | 'schedule'
+
+/** API 응답 key → 컬럼 매핑 및 표현 스타일 */
+export interface ColumnMappingDef {
+  /** API 응답의 key (점 표기 지원: event_data.principal) */
+  responseKey: string
+  /** 컬럼 헤더 라벨 */
+  label: string
+  /** 표현 스타일 */
+  format?: 'text' | 'number' | 'currency' | 'date' | 'badge' | 'progress'
+  width?: string
+  align?: 'left' | 'center' | 'right'
+  sortable?: boolean
+  clickable?: boolean
+}
+
+/** API 기반 위젯 공통 config */
+export interface ApiWidgetConfigBase {
+  /** API 경로 (직접 입력) */
+  apiPath: string
+  /** API 쿼리 파라미터 (예: wm_id) */
+  apiParams?: Record<string, string | number>
+  gridWidth?: number
+  gridRows?: number
+}
+
+/** action-list: 배열 응답 → 테이블 행 */
+export interface ActionListApiConfig extends ApiWidgetConfigBase {
+  displayType: 'action-list'
+  columnMappings: ColumnMappingDef[]
+  defaultSort?: { field: string; direction: 'asc' | 'desc' }
+  pageSize?: number
+}
+
+/** bar-chart: { data, seriesLabels } 고정 구조 */
+export interface BarChartApiConfig extends ApiWidgetConfigBase {
+  displayType: 'bar-chart'
+  chartVariant?: BarChartVariant
+  labelKey?: string
+  valuesKey?: string
+}
+
+/** text-block: 배열 [{ id, title, content }] */
+export interface TextBlockApiConfig extends ApiWidgetConfigBase {
+  displayType: 'text-block'
+  titleKey?: string
+  contentKey?: string
+}
+
+/** summary-card: { [key]: value } 또는 stats 객체 */
+export interface SummaryCardApiConfig extends ApiWidgetConfigBase {
+  displayType: 'summary-card'
+  metricMappings: Array<{
+    responseKey: string
+    title: string
+    format?: 'number' | 'currency' | 'default'
+    icon?: SummaryCardIconName
+    iconBg?: string
+    suffix?: string
+  }>
+}
+
+export type ApiWidgetConfig = ActionListApiConfig | BarChartApiConfig | TextBlockApiConfig | SummaryCardApiConfig
+
+/** config가 API 기반인지 확인 */
+export function isApiBasedConfig(config: unknown): config is ApiWidgetConfig {
+  if (!config || typeof config !== 'object') return false
+  const path = (config as Record<string, unknown>).apiPath
+  return typeof path === 'string' && path.length > 0
 }
 
 // ----- 요약 카드 위젯 (summary-card) config 타입 -----
@@ -65,6 +139,8 @@ export interface BarChartDataItem {
 }
 
 export interface BarChartWidgetConfig {
+  /** 위젯 코드 (BC001|BC002|BC003) - API 매핑 키 */
+  widgetCode?: 'BC001' | 'BC002' | 'BC003'
   /** 차트 종류 */
   chartVariant?: BarChartVariant
   /** 비율 선택: 2:1(가로 넓음) 또는 1:2(세로 길음) → gridWidth/gridRows 반영 */
@@ -72,8 +148,38 @@ export interface BarChartWidgetConfig {
   gridRows?: number
   /** 시리즈 이름 (범례용, values 순서와 매칭) */
   seriesLabels?: string[]
-  /** 리스트형 데이터 */
+  /** 리스트형 데이터 (수동 입력 시, widgetCode 미사용) */
   data?: BarChartDataItem[]
+  order?: number
+}
+
+// ----- 텍스트 블록 위젯 (text-block) 타입 -----
+export interface TextBlockColumnMapping {
+  /** feeds 테이블에서 제목에 매핑할 컬럼명 */
+  title: string
+  /** feeds 테이블에서 내용에 매핑할 컬럼명 */
+  content: string
+}
+
+export interface TextBlockWidgetConfig {
+  /** 마크다운 형식 텍스트 내용 (데이터소스 미사용 시) */
+  content?: string
+  /** 위젯 코드 (TB001) - API 매핑 키. 지정 시 /api/widgets/text-block/TB001/data 호출 */
+  widgetCode?: 'TB001'
+  /** 데이터소스 ID (feed 등). 레거시 - widgetCode 우선 */
+  dataSource?: string
+  /** 제목·내용 컬럼 매핑 (데이터소스 사용 시) */
+  columnMapping?: TextBlockColumnMapping
+  /** 쿼리 필터 오버라이드 (선택, 데이터소스 기본값 사용 시 생략) */
+  query?: {
+    filters?: Array<{ column: string; operator: string; value: unknown }>
+    order?: { field: string; direction: 'asc' | 'desc' }
+    limit?: number
+  }
+  /** 그리드 너비 (1~5) */
+  gridWidth?: number
+  /** 그리드 행 수 (1~4), 세로 길이 조절 */
+  gridRows?: number
   order?: number
 }
 
@@ -142,6 +248,14 @@ export const widgetTemplates: WidgetTemplate[] = [
       { width: 2, height: 1 }, // 2:1 가로 넓음
       { width: 1, height: 2 }   // 1:2 세로 길음
     ]
+  },
+  {
+    id: 'text-block',
+    name: '텍스트 블록',
+    type: 'text-block',
+    icon: '📝',
+    description: '마크다운 형식의 텍스트/AI 브리핑 표시',
+    gridSize: { width: 2, height: 1 }
   }
 ]
 
@@ -268,7 +382,7 @@ export function initializeDefaultWidgets(): void {
       templateId: 'action-list',
       title: '만기 고객 목록',
       config: {
-        dataSource: 'maturity',
+        widgetCode: 'AL001',
         gridWidth: 3,
         order: 1
       },
@@ -278,7 +392,7 @@ export function initializeDefaultWidgets(): void {
       templateId: 'action-list',
       title: '장기 미접촉 고객',
       config: {
-        dataSource: 'no-contact',
+        widgetCode: 'AL002',
         gridWidth: 2,
         order: 2
       },
@@ -288,7 +402,7 @@ export function initializeDefaultWidgets(): void {
       templateId: 'action-list',
       title: 'VIP 강등 위험 고객',
       config: {
-        dataSource: 'vip-risk',
+        widgetCode: 'AL003',
         gridWidth: 2,
         order: 3
       },

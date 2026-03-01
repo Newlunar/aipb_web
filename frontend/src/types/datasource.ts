@@ -1,5 +1,20 @@
 import type { ActionListDataSourceConfig } from '../components/widgets/ActionList'
 
+/** Feed 데이터소스용 쿼리 설정 (feeds 테이블) */
+export interface FeedDataSourceConfig {
+  query: {
+    base_table: 'feeds'
+    filters?: Array<{ column: string; operator: string; value: unknown }>
+    order?: { field: string; direction: 'asc' | 'desc' }
+    limit?: number
+  }
+  /** title, content 필드 매핑 (feeds 테이블 컬럼명) */
+  columnMapping: {
+    title: string
+    content: string
+  }
+}
+
 /**
  * 데이터소스 명세
  * 위젯에서 사용할 수 있는 데이터의 원천을 정의
@@ -8,9 +23,9 @@ export interface DataSourceSpec {
   id: string                              // 데이터소스 고유 ID
   name: string                            // 표시명
   description: string                     // 설명
-  category: 'customer-event' | 'metric' | 'schedule' // 카테고리
+  category: 'customer-event' | 'metric' | 'schedule' | 'feed'  // 카테고리
   applicableTemplates: string[]           // 이 데이터소스를 사용할 수 있는 템플릿 ID들
-  config: ActionListDataSourceConfig      // 실제 데이터소스 설정
+  config: ActionListDataSourceConfig | FeedDataSourceConfig    // 실제 데이터소스 설정
 }
 
 /**
@@ -292,6 +307,29 @@ export const DATA_SOURCE_REGISTRY: Record<string, DataSourceSpec> = {
     category: 'metric',
     applicableTemplates: ['summary-card'],
     config: {} as any
+  },
+
+  // 피드 데이터소스 (텍스트 블록용)
+  'feed': {
+    id: 'feed',
+    name: '피드',
+    description: 'feeds 테이블의 피드/시그널 데이터 (제목·내용 매핑)',
+    category: 'feed',
+    applicableTemplates: ['text-block'],
+    config: {
+      query: {
+        base_table: 'feeds',
+        filters: [
+          { column: 'feed_type', operator: 'in', value: ['news', 'research', 'signal', 'alert', 'notice'] }
+        ],
+        order: { field: 'published_at', direction: 'desc' },
+        limit: 5
+      },
+      columnMapping: {
+        title: 'title',
+        content: 'content'
+      }
+    } as FeedDataSourceConfig
   }
 }
 

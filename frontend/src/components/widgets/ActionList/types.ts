@@ -1,7 +1,7 @@
 export interface ColumnConfig {
   key: string
   label: string
-  source: 'customer' | 'scenario' | 'event' | 'account'
+  source: 'customer' | 'scenario' | 'event' | 'account' | 'api'  // api: row[field] 점 표기 지원
   field: string
   width?: string
   align?: 'left' | 'center' | 'right'

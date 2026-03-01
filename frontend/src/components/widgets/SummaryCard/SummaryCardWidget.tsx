@@ -1,12 +1,33 @@
 import { Users, TrendingUp, Calendar, AlertTriangle, DollarSign, Target } from 'lucide-react'
 import { useSummaryCardSettings } from '../../../hooks/useSummaryCardSettings'
 import { useUser } from '../../../contexts/UserContext'
+import { useWidgetDataByApiPath } from '../../../hooks/useWidgetData'
 import {
   type SummaryCardWidgetConfig,
   type SummaryCardItemDef,
   type SummaryCardIconName,
   type SavedWidget
 } from '../../../types/widget'
+import { isApiBasedConfig } from '../../../types/widget'
+
+function getByPath(obj: Record<string, unknown>, path: string): unknown {
+  const parts = path.split('.')
+  let v: unknown = obj
+  for (const p of parts) v = (v as Record<string, unknown>)?.[p]
+  return v
+}
+
+function formatMetricValue(val: unknown, format?: string, suffix?: string): string {
+  const num = Number(val)
+  if (Number.isNaN(num)) return String(val ?? '-')
+  if (format === 'currency') {
+    if (num >= 100_000_000) return `${(num / 100_000_000).toLocaleString()}억`
+    if (num >= 10_000) return `${(num / 10_000).toLocaleString()}만`
+    return num.toLocaleString() + '원'
+  }
+  if (format === 'number' && suffix) return `${num.toLocaleString()}${suffix}`
+  return num.toLocaleString()
+}
 
 const ICON_MAP: Record<SummaryCardIconName, React.ComponentType<{ size?: number; className?: string }>> = {
   Users,
@@ -88,14 +109,46 @@ interface SummaryCardWidgetProps {
 export function SummaryCardWidget({ widget }: SummaryCardWidgetProps) {
   const { currentUser } = useUser()
   const config = (widget.config || {}) as SummaryCardWidgetConfig
+  const isApiBased = isApiBasedConfig(config) && config.displayType === 'summary-card'
   const tableName = config.table ?? 'summary_card_settings'
   const { settingsByCardType, isLoading } = useSummaryCardSettings(currentUser?.id ?? null, tableName)
-  const cards = config.cards ?? []
-  const gridCols = config.gridCols ?? 4
 
-  if (cards.length === 0) {
+  const baseApiParams = (config as { apiParams?: Record<string, string | number> })?.apiParams ?? {}
+  const apiParams = isApiBased && currentUser?.id ? { ...baseApiParams, wm_id: currentUser.id } : baseApiParams
+  const apiData = useWidgetDataByApiPath<Record<string, unknown>>({
+    apiPath: isApiBased ? config.apiPath : '',
+    apiParams,
+    skip: !isApiBased,
+  })
+
+  const cards = config.cards ?? []
+  const metricMappings = isApiBased ? (config.metricMappings ?? []) : []
+  const effectiveCards: Array<{
+    metricId?: string
+    title: string
+    value?: string
+    change?: string
+    changeType?: SummaryCardItemDef['changeType']
+    icon?: SummaryCardItemDef['icon']
+    iconBg?: string
+    format?: SummaryCardItemDef['format']
+    suffix?: string
+  }> = isApiBased
+    ? metricMappings.map((m) => {
+        const raw = apiData.data ? getByPath(apiData.data, m.responseKey) : undefined
+        return {
+          title: m.title,
+          value: formatMetricValue(raw, m.format, m.suffix),
+          icon: m.icon,
+          iconBg: m.iconBg,
+        }
+      })
+    : cards
+  const gridCols = config.gridCols ?? config.gridWidth ?? 4
+
+  if (effectiveCards.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 h-full min-h-0 flex items-center justify-center text-center text-gray-500">
         <p>표시할 카드가 없습니다. 위젯 설정에서 카드를 추가하세요.</p>
       </div>
     )
@@ -112,29 +165,30 @@ export function SummaryCardWidget({ widget }: SummaryCardWidgetProps) {
             ? 'grid-cols-2 md:grid-cols-4 lg:grid-cols-5'
             : 'grid-cols-2 md:grid-cols-4 lg:grid-cols-5'
 
+  const displayLoading = isApiBased ? apiData.isLoading : isLoading
+
   return (
-    <div className={`min-w-0 grid ${gridClass} gap-4 [&>*]:min-w-0 [&>*]:max-w-full`}>
-      {cards.map((card, index) => {
-        const row = card.metricId ? settingsByCardType[card.metricId] : undefined
-        const valueStr = row?.value ?? '-'
-        const value =
-          row?.value != null
-            ? formatCardValueFromTable(valueStr, row.value_type, card.format, card.suffix)
-            : '-'
-        const change = (row?.description ?? card.change) || undefined
+    <div className={`min-w-0 h-full min-h-0 grid ${gridClass} gap-4 [&>*]:min-w-0 [&>*]:max-w-full`}>
+      {effectiveCards.map((card, index) => {
+        const row = !isApiBased && card.metricId ? settingsByCardType[card.metricId] : undefined
+        const valueStr = row?.value ?? card.value ?? '-'
+        const value = !isApiBased && row?.value != null
+          ? formatCardValueFromTable(valueStr, row.value_type, (card as SummaryCardItemDef).format, (card as SummaryCardItemDef).suffix)
+          : (card.value ?? '-')
+        const change = (row?.description ?? (card as SummaryCardItemDef).change) || undefined
         const IconComponent = (card.icon && ICON_MAP[card.icon]) ? ICON_MAP[card.icon] : Users
         const iconBg = card.iconBg ?? 'bg-primary/10'
 
         return (
           <SummaryCardItem
-            key={`${widget.id}-${index}-${card.metricId}`}
+            key={`${widget.id}-${index}-${card.metricId ?? index}`}
             title={card.title}
             value={value}
             change={change}
-            changeType={card.changeType}
+            changeType={(card as SummaryCardItemDef).changeType}
             icon={<IconComponent size={24} className="text-primary" />}
             iconBg={iconBg}
-            isLoading={isLoading}
+            isLoading={displayLoading}
           />
         )
       })}

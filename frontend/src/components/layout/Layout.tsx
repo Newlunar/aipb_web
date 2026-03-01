@@ -34,8 +34,8 @@ export function Layout() {
         {/* 헤더와 콘텐츠 사이 간격 */}
         <div className="h-6 bg-white shrink-0" />
 
-        {/* 콘텐츠 */}
-        <main className="flex-1 overflow-auto p-6">
+        {/* 콘텐츠 - 세로 스크롤 (flex 시 min-h-0 필요) */}
+        <main className="flex-1 min-h-0 overflow-y-auto p-6">
           <div className="bg-white rounded-xl p-6 min-h-full shadow-sm">
             <Outlet />
           </div>

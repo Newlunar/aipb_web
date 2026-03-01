@@ -4,6 +4,7 @@ import { widgetTemplates, type SavedWidget } from '../../types/widget'
 import { DynamicActionListWidget } from './DynamicActionListWidget'
 import { SummaryCardWidget } from './SummaryCard'
 import { BarChartWidget } from './BarChart'
+import { TextBlockWidget } from './TextBlock'
 
 interface WidgetGridProps {
     widgets: SavedWidget[]
@@ -28,7 +29,10 @@ export function WidgetGrid({
     const handleAction = onAction ?? ((action, row) => console.log('Action:', action, 'Row:', row))
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 auto-rows-min">
+        <div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6"
+            style={{ gridAutoRows: '40vh' }}
+        >
             {widgets.map((widget, index) => {
                 const template = widgetTemplates.find((t) => t.id === widget.templateId)
                 const span = widget.config?.gridWidth ?? template?.gridSize?.width ?? 3
@@ -72,7 +76,7 @@ export function WidgetGrid({
                     } else if (widget.templateId === 'schedule') {
                         // 임시 스케줄 위젯
                         content = (
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-full flex flex-col">
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-full min-h-0 flex flex-col">
                                 <div className="flex justify-between items-start mb-4">
                                     <h3 className="text-lg font-semibold text-gray-900">{widget.title}</h3>
                                 </div>
@@ -99,13 +103,15 @@ export function WidgetGrid({
                         content = <SummaryCardWidget widget={widget} />
                     } else if (widget.templateId === 'bar-chart') {
                         content = <BarChartWidget widget={widget} />
+                    } else if (widget.templateId === 'text-block') {
+                        content = <TextBlockWidget widget={widget} />
                     }
 
                     return content
                 })()
 
                 return (
-                    <div key={widget.id} className={`${colSpanClass} relative min-w-0 group`} style={rowSpanStyle}>
+                    <div key={widget.id} className={`${colSpanClass} relative min-w-0 min-h-0 group`} style={rowSpanStyle}>
                         {/* 핀 버튼 (우측 상단, 편집모드가 아닐 때도 노출되어야 접근 가능) */}
                         {/* 단, 위젯 내부 UI와 겹치지 않게 주의. 보통 헤더 영역에 위치함. 
                 여기서는 절대 위치로 우측 상단에 띄우되, 위젯들이 보통 padding이 있으므로 괜찮을 듯. 
@@ -128,7 +134,7 @@ export function WidgetGrid({
                         )}
 
                         {isEditLayout ? (
-                            <div className="relative h-full rounded-xl border-2 border-dashed border-primary/50 bg-primary/5 p-2">
+                            <div className="relative h-full min-h-0 rounded-xl border-2 border-dashed border-primary/50 bg-primary/5 p-2 flex flex-col">
                                 <div className="absolute top-2 right-2 z-20 flex items-center gap-1 bg-white rounded-lg shadow border border-gray-200 p-1">
                                     <button
                                         type="button"
@@ -152,12 +158,12 @@ export function WidgetGrid({
                                         <ChevronDown size={18} />
                                     </button>
                                 </div>
-                                <div className="opacity-70 pointer-events-none h-full">
+                                <div className="opacity-70 pointer-events-none flex-1 min-h-0 overflow-hidden">
                                     {widgetContent}
                                 </div>
                             </div>
                         ) : (
-                            <div className="h-full">
+                            <div className="h-full min-h-0">
                                 {widgetContent}
                             </div>
                         )}

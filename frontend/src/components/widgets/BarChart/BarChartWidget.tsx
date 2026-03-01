@@ -5,6 +5,10 @@ import {
   type SavedWidget
 } from '../../../types/widget'
 import { mockBarChartMonthlyAum, mockBarChartMonthlyAumSeries } from '../../../data/mockData'
+import { useBarChartByCode, useWidgetDataByApiPath } from '../../../hooks/useWidgetData'
+import { useUser } from '../../../contexts/UserContext'
+import type { BarChartWidgetCode } from '../../../types/widgetApiMapping'
+import { isApiBasedConfig } from '../../../types/widget'
 
 const SERIES_COLORS = [
   'bg-[#F47920]',   // primary
@@ -161,19 +165,58 @@ function VerticalBarGrouped({
   )
 }
 
+interface BarChartApiResponse {
+  data: BarChartDataItem[]
+  seriesLabels?: string[]
+}
+
 export function BarChartWidget({ widget }: BarChartWidgetProps) {
+  const { currentUser } = useUser()
   const config = (widget.config || {}) as BarChartWidgetConfig
   const variant: BarChartVariant = config.chartVariant ?? 'vertical-bar-stacked'
+  const widgetCode = config.widgetCode as BarChartWidgetCode | undefined
+  const isApiBased = isApiBasedConfig(config) && config.displayType === 'bar-chart'
+  const baseApiParams = (config as { apiParams?: Record<string, string | number> })?.apiParams ?? {}
+  const apiParams = isApiBased && currentUser?.id ? { ...baseApiParams, wm_id: currentUser.id } : baseApiParams
+  const apiData = useWidgetDataByApiPath<BarChartApiResponse>({
+    apiPath: isApiBased ? config.apiPath : '',
+    apiParams,
+    skip: !isApiBased,
+  })
+
+  const { data: codeApiData, isLoading: codeLoading, error: codeError } = useBarChartByCode({
+    widgetCode: widgetCode ?? 'BC003',
+    wmId: currentUser?.id ?? null,
+  })
+
   const rawData = config.data ?? []
   const rawSeriesLabels = config.seriesLabels ?? []
   const hasSavedData = rawData.length > 0 && rawData.every((d) => d?.label != null && Array.isArray(d?.values))
-  const data = hasSavedData ? rawData : mockBarChartMonthlyAum
-  const seriesLabels = hasSavedData ? rawSeriesLabels : mockBarChartMonthlyAumSeries
+  const data = hasSavedData
+    ? rawData
+    : isApiBased && apiData.data
+      ? (apiData.data.data ?? [])
+      : codeApiData.data.length > 0
+        ? codeApiData.data
+        : mockBarChartMonthlyAum
+  const seriesLabels = hasSavedData
+    ? rawSeriesLabels
+    : isApiBased && apiData.data?.seriesLabels?.length
+      ? apiData.data.seriesLabels
+      : codeApiData.seriesLabels.length > 0
+        ? codeApiData.seriesLabels
+        : mockBarChartMonthlyAumSeries
+  const isLoading = isApiBased ? apiData.isLoading : codeLoading
+  const error = isApiBased ? apiData.error : codeError
 
-  if (data.length === 0) {
+  if (data.length === 0 && !isLoading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-full min-h-[200px] flex items-center justify-center text-gray-500">
-        <p>표시할 데이터가 없습니다. 위젯 설정에서 리스트 데이터를 입력하세요.</p>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-full min-h-0 flex items-center justify-center text-gray-500">
+        {error ? (
+          <p>데이터를 불러오지 못했습니다.</p>
+        ) : (
+          <p>표시할 데이터가 없습니다. 위젯 설정에서 리스트 데이터를 입력하세요.</p>
+        )}
       </div>
     )
   }
@@ -182,10 +225,13 @@ export function BarChartWidget({ widget }: BarChartWidgetProps) {
   const maxVal = getMaxValue(data, stacked)
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-full min-h-[200px] flex flex-col">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-full min-h-0 flex flex-col">
       <div className="flex items-center gap-2 mb-4">
         <h3 className="text-lg font-semibold text-gray-900 truncate flex-1">{widget.title}</h3>
-        {!hasSavedData && (
+        {isLoading && (
+          <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 flex-shrink-0">로딩 중...</span>
+        )}
+        {!hasSavedData && !isLoading && !isApiBased && codeApiData.data.length === 0 && data.length > 0 && (
           <span className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-800 flex-shrink-0">샘플 데이터</span>
         )}
       </div>
